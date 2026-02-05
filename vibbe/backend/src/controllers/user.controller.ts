@@ -1,14 +1,34 @@
-import { Response } from "express";
-import { AuthRequest } from "../middlewares/auth.middleware";
-import { db } from "../db";
+import { Response } from "express"
+import { db } from "../db"
+import { AuthRequest } from "../middlewares/auth.middleware"
 
 export const getMe = async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+  try {
+    const userId = req.userId
 
-  const result = await db.query(
-    "SELECT display_name, email FROM users WHERE id = $1",
-    [userId]
-  );
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" })
+    }
 
-  return res.json(result.rows[0]);
-};
+    const result = await db.query(
+      `SELECT 
+         id,
+         email,
+         display_name,
+         is_verified,
+         created_at
+       FROM users
+       WHERE id = $1`,
+      [userId]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
+    return res.json(result.rows[0])
+  } catch (err) {
+    console.error("GET ME ERROR:", err)
+    return res.status(500).json({ message: "Server error" })
+  }
+}
